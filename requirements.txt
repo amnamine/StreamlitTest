@@ -1,5 +1,7 @@
+flask
 streamlit
-tensorflow
 numpy
-Pillow
-h5py
+pandas
+scikit-learn
+joblib
+gunicorn
