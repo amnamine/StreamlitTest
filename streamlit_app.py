@@ -14,22 +14,21 @@ import pandas as pd
 import streamlit as st
 
 BASE_DIR = Path(__file__).resolve().parent
-MODEL_DIR = BASE_DIR / "models"
-DATASET_PATH = BASE_DIR / "dataset" / "yield_df.csv"
 
 
-def _first_existing(*candidates: Path) -> Path:
-    for p in candidates:
-        if p.is_file():
-            return p
-    return candidates[0]
+def _find_required_file(filename: str) -> Path:
+    # Flat layout: all files live next to streamlit_app.py.
+    candidate = BASE_DIR / filename
+    if candidate.is_file():
+        return candidate
+    raise FileNotFoundError(f"Could not find `{filename}` under `{BASE_DIR}`")
 
 
 def _paths():
     return (
-        _first_existing(MODEL_DIR / "crop_yield_prediction_model.pkl", BASE_DIR / "crop_yield_prediction_model.pkl"),
-        _first_existing(MODEL_DIR / "crop_yield_scaler.pkl", BASE_DIR / "crop_yield_scaler.pkl"),
-        _first_existing(MODEL_DIR / "model_features.pkl", BASE_DIR / "model_features.pkl"),
+        _find_required_file("crop_yield_prediction_model.pkl"),
+        _find_required_file("crop_yield_scaler.pkl"),
+        _find_required_file("model_features.pkl"),
     )
 
 
@@ -50,9 +49,11 @@ def load_model_bundle():
 
 @st.cache_data
 def load_area_item_options():
-    if not DATASET_PATH.is_file():
+    try:
+        dataset_path = _find_required_file("yield_df.csv")
+    except FileNotFoundError:
         return [], []
-    df = pd.read_csv(DATASET_PATH)
+    df = pd.read_csv(dataset_path)
     areas = sorted(df["Area"].dropna().unique().tolist())
     items = sorted(df["Item"].dropna().unique().tolist())
     return areas, items
@@ -132,14 +133,14 @@ def main():
     except FileNotFoundError as e:
         st.error(
             "Missing model files. Place **crop_yield_prediction_model.pkl**, **crop_yield_scaler.pkl**, "
-            "and **model_features.pkl** in the `models/` folder or project root.\n\n"
+            "and **model_features.pkl** in the project root (same folder as `streamlit_app.py`).\n\n"
             f"Details: `{e}`"
         )
         st.stop()
 
     areas, items = load_area_item_options()
     if not areas or not items:
-        st.warning("Could not load `dataset/yield_df.csv` — country/crop lists will be empty.")
+        st.warning("Could not load `yield_df.csv` from the project root — country/crop lists will be empty.")
 
     with st.sidebar:
         st.markdown("### 🌾 Crop Yield Lab")
